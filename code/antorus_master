@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+from rclc import rclc
+import math
+import datetime as dt
+
+## Setup
+instances = ['Antorus']  # Included instances
+difficulties = ['Mythic','Heroic']  # Included difficulties
+excludeResponses = ['Autopass', 'Pass', 'Transmog', 'Crucible Relic',
+                    'Disenchant', 'Offspec', 'Titanforge Chance',
+                    'Candidate didn\'t respond on time',
+                    'Candidate is selecting response, please wait',
+                    'Offline or RCLootCouncil not installed']  # Excluded responses
+bonusResponses = ['Crucible Relic', 'Titanforge Chance']
+raidDays = [0, 1, 2, 6]  # 0=tuesday, 1=wednesday, ..., 6=monday
+startDate = dt.datetime(2017, 11, 28, 0, 0, 0)  # Antorus release
+now = dt.datetime.now()
+nWeeks = int(math.ceil((now - startDate).days/7.0))
+
+## Load data and remove duplicates
+files = ['../logs/kurious.txt',
+         '../logs/protean.txt']
+lootAll = rclc.load(files)
+
+## Create and apply filters
+fInst = {'type': 'include', 'field': 'instance', 'value': instances}
+fDiff = {'type': 'include', 'field': 'instance', 'value': difficulties}
+fResp = {'type': 'exclude', 'field': 'response', 'value': excludeResponses}
+fBonus = {'type': 'include', 'field': 'response', 'value': bonusResponses}
+fTier = {'type': 'include', 'field': 'subType', 'value': ['Armor Token']}
+loot = rclc.filter(lootAll, [fInst, fDiff, fResp])
+bonus = rclc.filter(lootAll,[fInst, fDiff, fBonus])
+tier = rclc.filter(loot,[fTier])
+
+## Generate report
+print('#+setupfile: theme-readtheorg.setup')
+print('#+title:Massacre Scene RCLootCountil History')
+print('#+author:Protean')
+print(now.strftime('Generated on %m/%d/%y %H:%M:%S'))
+
+# RCLC data summary
+print('* RCLootCouncil Data')
+print('\n- Included Instances:')
+rclc.printUnique(loot, 'instance', nIndent=2)
+print('\n- Included Responses:')
+rclc.printUnique(loot, 'response')
+
+print('\n* Raid Totals')
+print('\n** Raid Drops by Week:')
+rclc.printDropsByWeek(loot, startDate, nWeeks, raidDays)
+print('\n** Tier Totals by Slot:')
+rclc.printTotals(tier,row='tierGroup',col='equipLoc')
+
+print('\n* Player Totals')
+print('\n** Player Totals by Armor Type:')
+rclc.printTotals(loot,row='player',col='subType',groupBy='armorType')
+print('\n** Player Tier Totals by Slot:')
+rclc.printTotals(tier,row='player',col='equipLoc',groupBy='tierGroup')
+print('\n** Player Titanforge/Crucible Rolls:')
+rclc.printTotals(bonus,row='player',col='subType')
+
+# Comments/history
+print('\n* Player Comments and Responses')
+print('\n** Comments containing "Best" or "BiS":')
+rclc.printBiSKeywords(loot,nIndent=2)
+print('\n** Complete Player Loot Histories:')
+rclc.printPlayerHistories(loot)
