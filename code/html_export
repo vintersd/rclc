@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-DIR=`pwd`
-FILES=""
+python $1 > $2
 
-# wrap each argument in the code required to call tangle on it
-for i in $@; do
-FILES="$FILES \"$i\""
-done
+DIR=`pwd`
 
 emacs -Q --batch \
 --eval "(progn
+     (setq make-backup-files nil)
      (require 'org)(require 'org-table)
      (mapc (lambda (file)
             (find-file (expand-file-name file \"$DIR\"))
             (org-table-map-tables 'org-table-align)
             (write-file file nil)
-            (kill-buffer)) '($FILES)))"
+            (org-html-export-to-html)
+            (kill-buffer)) '(\"$2\")))"
